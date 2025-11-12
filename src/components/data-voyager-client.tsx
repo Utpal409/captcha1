@@ -16,8 +16,10 @@ import {
   Search,
   Globe,
   UploadCloud,
+  AlertTriangle,
 } from 'lucide-react';
 import Image from 'next/image';
+import { Textarea } from './ui/textarea';
 
 
 const initialState: ActionState = {};
@@ -29,6 +31,7 @@ export function DataVoyagerClient() {
   );
   const [captchaImage, setCaptchaImage] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [dropboxError, setDropboxError] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -45,12 +48,14 @@ export function DataVoyagerClient() {
         title: 'Success',
         description: 'Captcha fetched.',
       });
+      setDropboxError(null); // Clear previous errors on new fetch
     }
     if (state.dropboxSuccess) {
       toast({
         title: 'Dropbox Upload Successful',
         description: state.dropboxSuccess,
       });
+      setDropboxError(null);
     }
   }, [state, toast]);
 
@@ -64,19 +69,22 @@ export function DataVoyagerClient() {
       return;
     }
     setIsUploading(true);
+    setDropboxError(null);
     const result = await sendToDropbox(captchaImage);
     setIsUploading(false);
     if (result.error) {
+      setDropboxError(result.error);
       toast({
         variant: 'destructive',
         title: 'Dropbox Upload Error',
-        description: result.error,
+        description: 'See details below.',
       });
     } else if (result.dropboxSuccess) {
       toast({
         title: 'Dropbox Upload Successful',
         description: result.dropboxSuccess,
       });
+      setDropboxError(null);
     }
   };
 
@@ -159,6 +167,19 @@ export function DataVoyagerClient() {
                   </Button>
                 </div>
               )
+            )}
+            {dropboxError && (
+              <div className="mt-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle className="h-5 w-5 text-destructive" />
+                  <h3 className="text-lg font-semibold text-destructive">Dropbox Error Details</h3>
+                </div>
+                <Textarea
+                  readOnly
+                  className="w-full h-40 font-mono text-xs bg-destructive/10 border-destructive"
+                  value={dropboxError}
+                />
+              </div>
             )}
           </CardContent>
         </Card>
