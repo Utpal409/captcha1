@@ -78,15 +78,15 @@ export async function sendToDropbox(captcha: string): Promise<ActionState> {
       body: JSON.stringify({ path: '/captcha', recursive: false }),
     });
 
-    if (!listFolderResponse.ok) {
-        if (listFolderResponse.status !== 409) {
-            const errorBody = await listFolderResponse.text();
-            console.error('Dropbox API Error (list_folder):', errorBody);
-            return { error: `Failed to list files in Dropbox: ${listFolderResponse.status} ${listFolderResponse.statusText}. Response: ${errorBody}` };
-        }
+    let nextFileNumber = 1;
+    // A 409 error on list_folder means the folder doesn't exist, which is fine.
+    // We'll just start numbering at 1. Any other error is a problem.
+    if (!listFolderResponse.ok && listFolderResponse.status !== 409) {
+        const errorBody = await listFolderResponse.text();
+        console.error('Dropbox API Error (list_folder):', errorBody);
+        return { error: `Failed to list files in Dropbox: ${listFolderResponse.status} ${listFolderResponse.statusText}. Response: ${errorBody}` };
     }
     
-    let nextFileNumber = 1;
     if (listFolderResponse.ok) {
         const listData = await listFolderResponse.json();
         const existingNumbers = listData.entries
