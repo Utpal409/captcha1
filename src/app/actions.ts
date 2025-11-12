@@ -74,7 +74,7 @@ export async function sendToDropbox(captcha: string): Promise<ActionState> {
     const imageBuffer = Buffer.from(base64Data, 'base64');
 
     const dropboxApiArg = {
-      path: `/captcha_${Date.now()}.jpg`,
+      path: `/captcha/captcha_${Date.now()}.jpg`,
       mode: 'add',
       autorename: true,
       mute: false,
