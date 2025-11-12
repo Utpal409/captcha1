@@ -258,7 +258,7 @@ export async function fetchAndSend(): Promise<ActionState> {
     return { error: 'Dropbox access token is not configured.' };
   }
 
-  const PARALLEL_REQUESTS = 2;
+  const PARALLEL_REQUESTS = 3;
   const logMessages: string[] = [];
   let error: string | undefined;
 
