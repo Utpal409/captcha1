@@ -258,9 +258,26 @@ export async function fetchAndSend(): Promise<ActionState> {
     return { error: 'Dropbox access token is not configured.' };
   }
 
+  const PARALLEL_REQUESTS = 2;
+  const logMessages: string[] = [];
+  let error: string | undefined;
+
   try {
     const targetFolder = await getTargetFolder(accessToken);
-    return await runSingleFetchAndSend(targetFolder);
+    
+    const fetchPromises = Array(PARALLEL_REQUESTS).fill(0).map(async (_, i) => {
+        const result = await runSingleFetchAndSend(targetFolder);
+        if (result.logMessage) {
+            logMessages.push(result.logMessage);
+        }
+        if (result.error && !error) { // Capture first error
+            error = result.error;
+        }
+    });
+
+    await Promise.all(fetchPromises);
+
+    return { logMessages, error };
 
   } catch (e) {
       if (e instanceof Error) {
