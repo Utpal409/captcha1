@@ -81,7 +81,8 @@ export function DataVoyagerClient() {
     }
     setIsUploading(true);
     setDropboxError(null);
-    const result = await sendToDropbox(captchaImage);
+    const folder = await getTargetFolder(); // For manual send, we still need folder logic
+    const result = await sendToDropbox(captchaImage, folder);
     setIsUploading(false);
     if (result.error) {
       setDropboxError(result.error);
@@ -99,31 +100,43 @@ export function DataVoyagerClient() {
     }
   };
 
+  const getTargetFolder = async () => {
+      // Dummy function for client-side to satisfy call signature
+      // The real logic is now fully on the server
+      return "/captcha";
+  }
+
   const runAutoFetch = async () => {
       const result = await fetchAndSend();
-      if(result.logMessage) {
+      if(result.logMessages && result.logMessages.length > 0) {
+        setAutoFetchLogs(prev => [...result.logMessages!, ...prev]);
+         const successCount = result.logMessages.filter(log => log.includes("successfully")).length;
+         fetchCountRef.current += successCount;
+      } else if (result.logMessage) {
         setAutoFetchLogs(prev => [result.logMessage!, ...prev]);
+        if(result.dropboxSuccess) {
+           fetchCountRef.current += 1;
+        }
       }
-      if (result.dropboxSuccess) {
-        fetchCountRef.current += 1;
+      
+      // Keep fetching if auto-fetch is still on
+      if (isAutoFetching) {
+          requestAnimationFrame(runAutoFetch);
       }
   };
 
   useEffect(() => {
+    // This effect is to manage the animation frame loop based on isAutoFetching state
+    let animationFrameId: number;
     if (isAutoFetching) {
-      runAutoFetch(); // Run once immediately
-      intervalRef.current = setInterval(runAutoFetch, 0);
-    } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    }
+       animationFrameId = requestAnimationFrame(runAutoFetch);
+    } 
+
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
+        if(animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+        }
+    }
   }, [isAutoFetching]);
 
   const startAutoFetch = () => {
@@ -133,9 +146,9 @@ export function DataVoyagerClient() {
     setFetchSpeed(0);
 
     speedCalcIntervalRef.current = setInterval(() => {
-        setFetchSpeed(fetchCountRef.current * 6); // Calculate per minute speed from 10s intervals
+        setFetchSpeed(fetchCountRef.current); // Fetches per minute
         fetchCountRef.current = 0;
-    }, 10000); // Calculate speed every 10 seconds
+    }, 60000); // Calculate speed every 1 minute
   };
 
   const stopAutoFetch = () => {
