@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useState, useEffect } from 'react';
-import { fetchAndExtract, type ActionState } from '@/app/actions';
+import { fetchAndExtract, sendToDropbox, type ActionState } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -15,6 +15,7 @@ import {
   Loader2,
   Search,
   Globe,
+  UploadCloud,
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -27,6 +28,7 @@ export function DataVoyagerClient() {
     initialState
   );
   const [captchaImage, setCaptchaImage] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -44,7 +46,39 @@ export function DataVoyagerClient() {
         description: 'Captcha fetched.',
       });
     }
+    if (state.dropboxSuccess) {
+      toast({
+        title: 'Dropbox Upload Successful',
+        description: state.dropboxSuccess,
+      });
+    }
   }, [state, toast]);
+
+  const handleSendToDropbox = async () => {
+    if (!captchaImage) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'No captcha image to upload.',
+      });
+      return;
+    }
+    setIsUploading(true);
+    const result = await sendToDropbox(captchaImage);
+    setIsUploading(false);
+    if (result.error) {
+      toast({
+        variant: 'destructive',
+        title: 'Dropbox Upload Error',
+        description: result.error,
+      });
+    } else if (result.dropboxSuccess) {
+      toast({
+        title: 'Dropbox Upload Successful',
+        description: result.dropboxSuccess,
+      });
+    }
+  };
 
   return (
     <div className="flex flex-col gap-8">
@@ -100,14 +134,29 @@ export function DataVoyagerClient() {
               </div>
             ) : (
              captchaImage && (
-                <div className="mt-4 rounded-md border bg-muted/50 p-4 flex justify-center">
-                   <Image
-                      src={captchaImage}
-                      alt="Fetched Captcha"
-                      width={200}
-                      height={70}
-                      className="rounded-md"
-                    />
+                <div className="flex flex-col items-center gap-4">
+                  <div className="mt-4 rounded-md border bg-muted/50 p-4 flex justify-center">
+                     <Image
+                        src={captchaImage}
+                        alt="Fetched Captcha"
+                        width={200}
+                        height={70}
+                        className="rounded-md"
+                      />
+                  </div>
+                  <Button onClick={handleSendToDropbox} disabled={isUploading} className="min-w-[180px]">
+                    {isUploading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <UploadCloud className="mr-2 h-4 w-4" />
+                        Send to Dropbox
+                      </>
+                    )}
+                  </Button>
                 </div>
               )
             )}

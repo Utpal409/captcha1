@@ -7,6 +7,7 @@ export interface ActionState {
     captcha: string;
   };
   error?: string;
+  dropboxSuccess?: string;
 }
 
 export async function fetchAndExtract(
@@ -54,5 +55,54 @@ export async function fetchAndExtract(
       return { error: e.message };
     }
     return { error: 'An unknown error occurred while fetching the data.' };
+  }
+}
+
+export async function sendToDropbox(captcha: string): Promise<ActionState> {
+  const accessToken = process.env.DROPBOX_ACCESS_TOKEN;
+  if (!accessToken) {
+    return { error: 'Dropbox access token is not configured. Please set DROPBOX_ACCESS_TOKEN in your .env file.' };
+  }
+
+  if (!captcha) {
+    return { error: 'No captcha image to upload.' };
+  }
+
+  try {
+    // The image data is base64 encoded, so we need to decode it to binary before uploading
+    const base64Data = captcha.replace(/^data:image\/jpeg;base64,/, "");
+    const imageBuffer = Buffer.from(base64Data, 'base64');
+
+    const dropboxApiArg = {
+      path: `/captcha_${Date.now()}.jpg`,
+      mode: 'add',
+      autorename: true,
+      mute: false,
+    };
+
+    const response = await fetch('https://content.dropboxapi.com/2/files/upload', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Dropbox-API-Arg': JSON.stringify(dropboxApiArg),
+        'Content-Type': 'application/octet-stream',
+      },
+      body: imageBuffer,
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error('Dropbox API Error:', errorBody);
+      return { error: `Failed to upload to Dropbox: ${response.status} ${response.statusText}` };
+    }
+
+    const responseData = await response.json();
+    return { dropboxSuccess: `Image uploaded successfully to Dropbox as ${responseData.path_display}` };
+
+  } catch (e) {
+    if (e instanceof Error) {
+      return { error: e.message };
+    }
+    return { error: 'An unknown error occurred while uploading to Dropbox.' };
   }
 }
