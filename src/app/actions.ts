@@ -69,7 +69,6 @@ export async function sendToDropbox(captcha: string): Promise<ActionState> {
   }
 
   try {
-    // The image data is base64 encoded, so we need to decode it to binary before uploading
     const base64Data = captcha.replace(/^data:image\/jpeg;base64,/, "");
     const imageBuffer = Buffer.from(base64Data, 'base64');
 
