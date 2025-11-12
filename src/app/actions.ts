@@ -4,8 +4,7 @@ const URL_TO_FETCH = 'https://gateway-voters.eci.gov.in/api/v1/captcha-service/g
 
 export interface ActionState {
   data?: {
-    content: string;
-    format: string;
+    captcha: string;
   };
   error?: string;
 }
@@ -30,25 +29,20 @@ export async function fetchAndExtract(
       };
     }
 
-    const content = await response.text();
-    const contentType = response.headers.get('content-type') || 'text/plain';
+    const data = await response.json();
 
-    let format = 'text';
-    if (contentType.includes('application/json')) {
-      format = 'json';
-    } else if (
-      contentType.includes('text/html') ||
-      contentType.includes('application/xml')
-    ) {
-      format = 'html';
+    if (data && data.captcha) {
+        return {
+            data: {
+                captcha: data.captcha
+            }
+        }
+    } else {
+        return {
+            error: "Could not find captcha in the response"
+        }
     }
 
-    return {
-      data: {
-        content,
-        format,
-      },
-    };
   } catch (e) {
     if (e instanceof TypeError && e.message.includes('fetch failed')) {
       return {

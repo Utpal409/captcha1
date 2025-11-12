@@ -10,18 +10,14 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import {
   Loader2,
   Search,
-  Copy,
-  FileText,
-  FileCode,
-  Braces,
   Globe,
 } from 'lucide-react';
+import Image from 'next/image';
+
 
 const initialState: ActionState = {};
 
@@ -30,8 +26,7 @@ export function DataVoyagerClient() {
     fetchAndExtract,
     initialState
   );
-  const [displayFormat, setDisplayFormat] = useState('text');
-  const [content, setContent] = useState('');
+  const [captchaImage, setCaptchaImage] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -42,42 +37,14 @@ export function DataVoyagerClient() {
         description: state.error,
       });
     }
-    if (state.data) {
-      const { content: newContent, format } = state.data;
-      setDisplayFormat(format);
-      if (format === 'json') {
-        try {
-          setContent(JSON.stringify(JSON.parse(newContent), null, 2));
-        } catch {
-          setContent(newContent);
-        }
-      } else {
-        setContent(newContent);
-      }
+    if (state.data?.captcha) {
+      setCaptchaImage(`data:image/jpeg;base64,${state.data.captcha}`);
       toast({
         title: 'Success',
-        description: 'Data fetched.',
+        description: 'Captcha fetched.',
       });
     }
   }, [state, toast]);
-
-  const handleCopy = (text: string, subject: string) => {
-    navigator.clipboard
-      .writeText(text)
-      .then(() => {
-        toast({
-          title: 'Copied to clipboard',
-          description: `${subject} has been copied.`,
-        });
-      })
-      .catch((err) => {
-        toast({
-          variant: 'destructive',
-          title: 'Failed to copy',
-          description: 'Could not copy to clipboard.',
-        });
-      });
-  };
 
   return (
     <div className="flex flex-col gap-8">
@@ -116,58 +83,33 @@ export function DataVoyagerClient() {
         </CardContent>
       </Card>
 
-      {(isPending || state.data) && (
+      {(isPending || captchaImage) && (
         <Card>
           <CardHeader>
-            <div className="flex justify-between items-center">
-              <div>
-                <CardTitle>Fetched Content</CardTitle>
-                <CardDescription>
-                  The data from the provided URL.
-                </CardDescription>
-              </div>
-              {state.data && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleCopy(content, 'Content')}
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-              )}
+            <div>
+              <CardTitle>Fetched Captcha</CardTitle>
+              <CardDescription>
+                The captcha image from the provided URL.
+              </CardDescription>
             </div>
           </CardHeader>
           <CardContent>
-            {isPending && !state.data ? (
-              <div className="h-[500px] flex items-center justify-center">
+            {isPending && !captchaImage ? (
+              <div className="h-[100px] flex items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <Tabs value={displayFormat} onValueChange={setDisplayFormat}>
-                <TabsList>
-                  <TabsTrigger value="html">
-                    <FileCode className="mr-2" />
-                    HTML
-                  </TabsTrigger>
-                  <TabsTrigger value="json">
-                    <Braces className="mr-2" />
-                    JSON
-                  </TabsTrigger>
-                  <TabsTrigger value="text">
-                    <FileText className="mr-2" />
-                    Text
-                  </TabsTrigger>
-                </TabsList>
-                <div className="mt-4 rounded-md border bg-muted/50">
-                  <ScrollArea className="h-[500px] w-full">
-                    <pre className="p-4 text-sm whitespace-pre-wrap break-all">
-                      <code className={`language-${displayFormat}`}>
-                        {content}
-                      </code>
-                    </pre>
-                  </ScrollArea>
+             captchaImage && (
+                <div className="mt-4 rounded-md border bg-muted/50 p-4 flex justify-center">
+                   <Image
+                      src={captchaImage}
+                      alt="Fetched Captcha"
+                      width={200}
+                      height={70}
+                      className="rounded-md"
+                    />
                 </div>
-              </Tabs>
+              )
             )}
           </CardContent>
         </Card>
