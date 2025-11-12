@@ -91,7 +91,7 @@ export async function sendToDropbox(captcha: string): Promise<ActionState> {
     if (!response.ok) {
       const errorBody = await response.text();
       console.error('Dropbox API Error:', errorBody);
-      return { error: `Failed to upload to Dropbox: ${response.status} ${response.statusText}` };
+      return { error: `Failed to upload to Dropbox: ${response.status} ${response.statusText}. Response: ${errorBody}` };
     }
 
     const responseData = await response.json();
