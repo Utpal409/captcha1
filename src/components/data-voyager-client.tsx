@@ -41,8 +41,9 @@ export function DataVoyagerClient() {
   const [fetchSpeed, setFetchSpeed] = useState(0);
   const fetchCountRef = useRef(0);
   const speedCalcIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
 
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
   const { toast } = useToast();
 
   useEffect(() => {
@@ -120,24 +121,10 @@ export function DataVoyagerClient() {
       }
       
       // Keep fetching if auto-fetch is still on
-      if (isAutoFetching) {
-          requestAnimationFrame(runAutoFetch);
+      if (animationFrameRef.current !== null) {
+          animationFrameRef.current = requestAnimationFrame(runAutoFetch);
       }
   };
-
-  useEffect(() => {
-    // This effect is to manage the animation frame loop based on isAutoFetching state
-    let animationFrameId: number;
-    if (isAutoFetching) {
-       animationFrameId = requestAnimationFrame(runAutoFetch);
-    } 
-
-    return () => {
-        if(animationFrameId) {
-            cancelAnimationFrame(animationFrameId);
-        }
-    }
-  }, [isAutoFetching]);
 
   const startAutoFetch = () => {
     setAutoFetchLogs(prev => [`[${new Date().toLocaleTimeString()}] Starting auto-fetch...`, ...prev]);
@@ -145,15 +132,25 @@ export function DataVoyagerClient() {
     fetchCountRef.current = 0;
     setFetchSpeed(0);
 
+    // Start the animation frame loop
+    animationFrameRef.current = requestAnimationFrame(runAutoFetch);
+
     speedCalcIntervalRef.current = setInterval(() => {
-        setFetchSpeed(fetchCountRef.current); // Fetches per minute
+        setFetchSpeed(fetchCountRef.current * 6); // Calculate fetches per minute (10s interval * 6)
         fetchCountRef.current = 0;
-    }, 60000); // Calculate speed every 1 minute
+    }, 10000);
   };
 
   const stopAutoFetch = () => {
     setAutoFetchLogs(prev => [`[${new Date().toLocaleTimeString()}] Stopping auto-fetch...`, ...prev]);
     setIsAutoFetching(false);
+    
+    // Stop the animation frame loop
+    if (animationFrameRef.current !== null) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    
     if(speedCalcIntervalRef.current) {
         clearInterval(speedCalcIntervalRef.current);
         speedCalcIntervalRef.current = null;

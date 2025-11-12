@@ -252,7 +252,6 @@ async function runSingleFetchAndSend(targetFolder: string): Promise<ActionState>
 }
 
 export async function fetchAndSend(): Promise<ActionState> {
-  const PARALLEL_REQUESTS = 10;
   const accessToken = process.env.DROPBOX_ACCESS_TOKEN;
 
   if (!accessToken) {
@@ -261,18 +260,8 @@ export async function fetchAndSend(): Promise<ActionState> {
 
   try {
     const targetFolder = await getTargetFolder(accessToken);
-    
-    const promises = Array(PARALLEL_REQUESTS).fill(null).map(() => runSingleFetchAndSend(targetFolder));
-    
-    const results = await Promise.all(promises);
+    return await runSingleFetchAndSend(targetFolder);
 
-    const logMessages = results.map(r => r.logMessage!).filter(Boolean);
-    const successfulUploads = results.filter(r => r.dropboxSuccess).length;
-
-    return { 
-        logMessages: logMessages,
-        dropboxSuccess: `${successfulUploads} images uploaded in this batch.`
-    };
   } catch (e) {
       if (e instanceof Error) {
         console.error("Error in fetchAndSend:", e);
