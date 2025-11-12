@@ -69,12 +69,44 @@ export async function sendToDropbox(captcha: string): Promise<ActionState> {
   }
 
   try {
+    // Step 1: List files in the /captcha folder to determine the next filename
+    const listFolderResponse = await fetch('https://api.dropboxapi.com/2/files/list_folder', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ path: '/captcha', recursive: false }),
+    });
+
+    if (!listFolderResponse.ok) {
+        // If the folder doesn't exist, Dropbox returns a 409 error. We can treat this as an empty folder.
+        if (listFolderResponse.status !== 409) {
+            const errorBody = await listFolderResponse.text();
+            console.error('Dropbox API Error (list_folder):', errorBody);
+            return { error: `Failed to list files in Dropbox: ${listFolderResponse.status} ${listFolderResponse.statusText}. Response: ${errorBody}` };
+        }
+    }
+    
+    let nextFileNumber = 1;
+    if (listFolderResponse.ok) {
+        const listData = await listFolderResponse.json();
+        const existingNumbers = listData.entries
+            .map((entry: { name: string }) => parseInt(entry.name.replace('.jpg', ''), 10))
+            .filter((n: number) => !isNaN(n));
+        
+        if (existingNumbers.length > 0) {
+            nextFileNumber = Math.max(...existingNumbers) + 1;
+        }
+    }
+
+    const newFileName = `${nextFileNumber}.jpg`;
     const base64Data = captcha.replace(/^data:image\/jpeg;base64,/, "");
 
     const dropboxApiArg = {
-      path: `/captcha/captcha_${Date.now()}.jpg`,
+      path: `/captcha/${newFileName}`,
       mode: 'add',
-      autorename: true,
+      autorename: false,
       mute: false,
     };
 
@@ -92,7 +124,7 @@ export async function sendToDropbox(captcha: string): Promise<ActionState> {
 
     if (!response.ok) {
       const errorBody = await response.text();
-      console.error('Dropbox API Error:', errorBody);
+      console.error('Dropbox API Error (upload):', errorBody);
       return { error: `Failed to upload to Dropbox: ${response.status} ${response.statusText}. Response: ${errorBody}` };
     }
 
@@ -101,7 +133,8 @@ export async function sendToDropbox(captcha: string): Promise<ActionState> {
 
   } catch (e) {
     if (e instanceof Error) {
-      return { error: e.message };
+        console.error('Error in sendToDropbox:', e);
+        return { error: e.message };
     }
     return { error: 'An unknown error occurred while uploading to Dropbox.' };
   }
