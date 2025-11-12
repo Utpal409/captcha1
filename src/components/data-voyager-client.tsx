@@ -1,7 +1,7 @@
 'use client';
 
-import { useActionState, useState, useEffect } from 'react';
-import { fetchAndExtract, sendToDropbox, type ActionState } from '@/app/actions';
+import { useActionState, useState, useEffect, useRef } from 'react';
+import { fetchAndExtract, sendToDropbox, fetchAndSend, type ActionState } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -17,9 +17,12 @@ import {
   Globe,
   UploadCloud,
   AlertTriangle,
+  Play,
+  StopCircle,
 } from 'lucide-react';
 import Image from 'next/image';
 import { Textarea } from './ui/textarea';
+import { ScrollArea } from './ui/scroll-area';
 
 
 const initialState: ActionState = {};
@@ -32,6 +35,9 @@ export function DataVoyagerClient() {
   const [captchaImage, setCaptchaImage] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [dropboxError, setDropboxError] = useState<string | null>(null);
+  const [isAutoFetching, setIsAutoFetching] = useState(false);
+  const [autoFetchLogs, setAutoFetchLogs] = useState<string[]>([]);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -88,6 +94,40 @@ export function DataVoyagerClient() {
     }
   };
 
+  const runAutoFetch = async () => {
+      const result = await fetchAndSend();
+      if(result.logMessage) {
+        setAutoFetchLogs(prev => [result.logMessage!, ...prev]);
+      }
+  };
+
+  useEffect(() => {
+    if (isAutoFetching) {
+      runAutoFetch(); // Run once immediately
+      intervalRef.current = setInterval(runAutoFetch, 5000);
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    }
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [isAutoFetching]);
+
+  const startAutoFetch = () => {
+    setAutoFetchLogs(prev => [`[${new Date().toLocaleTimeString()}] Starting auto-fetch...`, ...prev]);
+    setIsAutoFetching(true);
+  };
+
+  const stopAutoFetch = () => {
+    setAutoFetchLogs(prev => [`[${new Date().toLocaleTimeString()}] Stopping auto-fetch...`, ...prev]);
+    setIsAutoFetching(false);
+  };
+
   return (
     <div className="flex flex-col gap-8">
       <Card className="overflow-hidden">
@@ -101,29 +141,62 @@ export function DataVoyagerClient() {
                 DataVoyager
               </CardTitle>
               <CardDescription>
-                Click the button to fetch content from the permanent URL.
+                Fetch captchas manually or start an automatic process.
               </CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <form action={formAction}>
-            <Button type="submit" disabled={isPending} className="min-w-[120px]">
-              {isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Fetching...
-                </>
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex items-center gap-4">
+            <form action={formAction}>
+              <Button type="submit" disabled={isPending || isAutoFetching} className="min-w-[120px]">
+                {isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Fetching...
+                  </>
+                ) : (
+                  <>
+                    <Search className="mr-2 h-4 w-4" />
+                    Fetch
+                  </>
+                )}
+              </Button>
+            </form>
+          </div>
+           <div className="flex items-center gap-4">
+              {!isAutoFetching ? (
+                  <Button onClick={startAutoFetch} className="min-w-[180px] bg-green-600 hover:bg-green-700">
+                      <Play className="mr-2 h-4 w-4" />
+                      Start Auto-Fetch
+                  </Button>
               ) : (
-                <>
-                  <Search className="mr-2 h-4 w-4" />
-                  Fetch
-                </>
+                  <Button onClick={stopAutoFetch} variant="destructive" className="min-w-[180px]">
+                      <StopCircle className="mr-2 h-4 w-4" />
+                      Stop Auto-Fetch
+                  </Button>
               )}
-            </Button>
-          </form>
+          </div>
         </CardContent>
       </Card>
+
+      {isAutoFetching && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Auto-Fetch Logs</CardTitle>
+            <CardDescription>Status of the automatic fetch and upload process.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-60 w-full rounded-md border p-4 bg-muted/50">
+              <div className="flex flex-col-reverse">
+                {autoFetchLogs.map((log, index) => (
+                  <p key={index} className="font-mono text-xs">{log}</p>
+                ))}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      )}
 
       {(isPending || captchaImage) && (
         <Card>
@@ -131,7 +204,7 @@ export function DataVoyagerClient() {
             <div>
               <CardTitle>Fetched Captcha</CardTitle>
               <CardDescription>
-                The captcha image from the provided URL.
+                The most recent manually fetched captcha image.
               </CardDescription>
             </div>
           </CardHeader>
@@ -152,7 +225,7 @@ export function DataVoyagerClient() {
                         className="rounded-md"
                       />
                   </div>
-                  <Button onClick={handleSendToDropbox} disabled={isUploading} className="min-w-[180px]">
+                  <Button onClick={handleSendToDropbox} disabled={isUploading || isAutoFetching} className="min-w-[180px]">
                     {isUploading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />

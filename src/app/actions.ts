@@ -8,13 +8,13 @@ export interface ActionState {
   };
   error?: string;
   dropboxSuccess?: string;
+  logMessage?: string;
 }
 
 export async function fetchAndExtract(
   prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-
   try {
     const response = await fetch(URL_TO_FETCH, {
       headers: {
@@ -69,7 +69,6 @@ export async function sendToDropbox(captcha: string): Promise<ActionState> {
   }
 
   try {
-    // Step 1: List files in the /captcha folder to determine the next filename
     const listFolderResponse = await fetch('https://api.dropboxapi.com/2/files/list_folder', {
       method: 'POST',
       headers: {
@@ -80,7 +79,6 @@ export async function sendToDropbox(captcha: string): Promise<ActionState> {
     });
 
     if (!listFolderResponse.ok) {
-        // If the folder doesn't exist, Dropbox returns a 409 error. We can treat this as an empty folder.
         if (listFolderResponse.status !== 409) {
             const errorBody = await listFolderResponse.text();
             console.error('Dropbox API Error (list_folder):', errorBody);
@@ -138,4 +136,25 @@ export async function sendToDropbox(captcha: string): Promise<ActionState> {
     }
     return { error: 'An unknown error occurred while uploading to Dropbox.' };
   }
+}
+
+export async function fetchAndSend(): Promise<ActionState> {
+  const fetchResult = await fetchAndExtract(
+    {},
+    new FormData()
+  );
+
+  if (fetchResult.error || !fetchResult.data?.captcha) {
+    return { error: fetchResult.error || 'Failed to fetch captcha.', logMessage: `[${new Date().toLocaleTimeString()}] Fetch failed: ${fetchResult.error || 'No captcha data'}` };
+  }
+  
+  const captchaWithPrefix = `data:image/jpeg;base64,${fetchResult.data.captcha}`;
+  
+  const sendResult = await sendToDropbox(captchaWithPrefix);
+
+  if (sendResult.error) {
+     return { error: sendResult.error, logMessage: `[${new Date().toLocaleTimeString()}] Upload failed: ${sendResult.error}` };
+  }
+
+  return { dropboxSuccess: sendResult.dropboxSuccess, logMessage: `[${new Date().toLocaleTimeString()}] ${sendResult.dropboxSuccess}` };
 }
