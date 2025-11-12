@@ -70,7 +70,6 @@ export async function sendToDropbox(captcha: string): Promise<ActionState> {
 
   try {
     const base64Data = captcha.replace(/^data:image\/jpeg;base64,/, "");
-    const imageBuffer = Buffer.from(base64Data, 'base64');
 
     const dropboxApiArg = {
       path: `/captcha/captcha_${Date.now()}.jpg`,
@@ -86,7 +85,7 @@ export async function sendToDropbox(captcha: string): Promise<ActionState> {
         'Dropbox-API-Arg': JSON.stringify(dropboxApiArg),
         'Content-Type': 'application/octet-stream',
       },
-      body: imageBuffer,
+      body: Buffer.from(base64Data, 'base64'),
     });
 
     if (!response.ok) {
