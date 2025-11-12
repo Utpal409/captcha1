@@ -58,58 +58,6 @@ export async function fetchAndExtract(
   }
 }
 
-async function getNextFileName(accessToken: string): Promise<string> {
-  try {
-    const listResponse = await fetch('https://api.dropboxapi.com/2/files/list_folder', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        path: '/captcha',
-        recursive: false,
-        include_media_info: false,
-        include_deleted: false,
-        include_has_explicit_shared_members: false,
-      }),
-    });
-
-    if (!listResponse.ok) {
-      const errorBody = await listResponse.json();
-      // If the folder doesn't exist, start with 1.jpg
-      if (errorBody?.error_summary?.startsWith('path/not_found/')) {
-        return '1.jpg';
-      }
-      // For other errors, we'll let it fail and be caught below
-      throw new Error(`Dropbox API Error (list_folder): ${errorBody.error_summary || listResponse.statusText}`);
-    }
-
-    const listData = await listResponse.json();
-    const files = listData.entries;
-    let maxNum = 0;
-    
-    if (files && files.length > 0) {
-        for (const file of files) {
-            const match = file.name.match(/^(\d+)\.jpg$/);
-            if (match) {
-                const num = parseInt(match[1], 10);
-                if (num > maxNum) {
-                    maxNum = num;
-                }
-            }
-        }
-    }
-    
-    return `${maxNum + 1}.jpg`;
-
-  } catch (e) {
-    console.error('Error getting next file name:', e);
-    // Fallback in case of an unexpected error during file listing
-    return `${Date.now()}.jpg`;
-  }
-}
-
 export async function sendToDropbox(captcha: string): Promise<ActionState> {
   const accessToken = process.env.DROPBOX_ACCESS_TOKEN;
 
@@ -122,7 +70,7 @@ export async function sendToDropbox(captcha: string): Promise<ActionState> {
   }
 
   try {
-    const newFileName = await getNextFileName(accessToken);
+    const newFileName = `${Date.now()}.jpg`;
     const base64Data = captcha.replace(/^data:image\/jpeg;base64,/, "");
 
     const dropboxApiArg = {
