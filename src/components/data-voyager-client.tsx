@@ -19,6 +19,7 @@ import {
   AlertTriangle,
   Play,
   StopCircle,
+  Gauge,
 } from 'lucide-react';
 import Image from 'next/image';
 import { Textarea } from './ui/textarea';
@@ -37,6 +38,10 @@ export function DataVoyagerClient() {
   const [dropboxError, setDropboxError] = useState<string | null>(null);
   const [isAutoFetching, setIsAutoFetching] = useState(false);
   const [autoFetchLogs, setAutoFetchLogs] = useState<string[]>([]);
+  const [fetchSpeed, setFetchSpeed] = useState(0);
+  const fetchCountRef = useRef(0);
+  const speedCalcIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
@@ -99,6 +104,9 @@ export function DataVoyagerClient() {
       if(result.logMessage) {
         setAutoFetchLogs(prev => [result.logMessage!, ...prev]);
       }
+      if (result.dropboxSuccess) {
+        fetchCountRef.current += 1;
+      }
   };
 
   useEffect(() => {
@@ -121,11 +129,24 @@ export function DataVoyagerClient() {
   const startAutoFetch = () => {
     setAutoFetchLogs(prev => [`[${new Date().toLocaleTimeString()}] Starting auto-fetch...`, ...prev]);
     setIsAutoFetching(true);
+    fetchCountRef.current = 0;
+    setFetchSpeed(0);
+
+    speedCalcIntervalRef.current = setInterval(() => {
+        setFetchSpeed(fetchCountRef.current * 6); // Calculate per minute speed from 10s intervals
+        fetchCountRef.current = 0;
+    }, 10000); // Calculate speed every 10 seconds
   };
 
   const stopAutoFetch = () => {
     setAutoFetchLogs(prev => [`[${new Date().toLocaleTimeString()}] Stopping auto-fetch...`, ...prev]);
     setIsAutoFetching(false);
+    if(speedCalcIntervalRef.current) {
+        clearInterval(speedCalcIntervalRef.current);
+        speedCalcIntervalRef.current = null;
+    }
+    setFetchSpeed(0);
+    fetchCountRef.current = 0;
   };
 
   return (
@@ -181,24 +202,39 @@ export function DataVoyagerClient() {
       </Card>
 
       {isAutoFetching && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Auto-Fetch Logs</CardTitle>
-            <CardDescription>Status of the automatic fetch and upload process.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-60 w-full rounded-md border p-4 bg-muted/50">
-              <div className="flex flex-col-reverse">
-                {autoFetchLogs.map((log, index) => (
-                  <p key={index} className="font-mono text-xs">{log}</p>
-                ))}
-              </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
+        <>
+          <Card>
+            <CardHeader>
+                <CardTitle>Live Stats</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div className="flex items-center gap-2 text-xl">
+                    <Gauge className="h-6 w-6 text-muted-foreground" />
+                    <span>Fetch Speed:</span>
+                    <span className="font-bold text-primary">{fetchSpeed}</span>
+                    <span className="text-sm text-muted-foreground">fetches/min</span>
+                </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Auto-Fetch Logs</CardTitle>
+              <CardDescription>Status of the automatic fetch and upload process.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-60 w-full rounded-md border p-4 bg-muted/50">
+                <div className="flex flex-col-reverse">
+                  {autoFetchLogs.map((log, index) => (
+                    <p key={index} className="font-mono text-xs">{log}</p>
+                  ))}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </>
       )}
 
-      {(isPending || captchaImage) && (
+      {(isPending || captchaImage) && !isAutoFetching && (
         <Card>
           <CardHeader>
             <div>
