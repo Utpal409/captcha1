@@ -64,12 +64,6 @@ export async function sendToDropbox(captcha: string): Promise<ActionState> {
     return { error: 'Dropbox access token is not configured. Please set DROPBOX_ACCESS_TOKEN in your .env file.' };
   }
   
-  const teamMemberId = process.env.DROPBOX_TEAM_MEMBER_ID;
-  if (!teamMemberId) {
-    return { error: 'You are using a Dropbox Business token. Please set DROPBOX_TEAM_MEMBER_ID in your .env file to specify which user to upload as.' };
-  }
-
-
   if (!captcha) {
     return { error: 'No captcha image to upload.' };
   }
@@ -87,7 +81,6 @@ export async function sendToDropbox(captcha: string): Promise<ActionState> {
     const headers: HeadersInit = {
         'Authorization': `Bearer ${accessToken}`,
         'Dropbox-API-Arg': JSON.stringify(dropboxApiArg),
-        'Dropbox-API-Select-User': teamMemberId,
         'Content-Type': 'application/octet-stream',
     };
 
