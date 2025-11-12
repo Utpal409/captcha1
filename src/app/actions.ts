@@ -112,6 +112,7 @@ async function getNextFileName(accessToken: string): Promise<string> {
 
 export async function sendToDropbox(captcha: string): Promise<ActionState> {
   const accessToken = process.env.DROPBOX_ACCESS_TOKEN;
+
   if (!accessToken) {
     return { error: 'Dropbox access token is not configured. Please set DROPBOX_ACCESS_TOKEN in your .env file.' };
   }
@@ -127,7 +128,7 @@ export async function sendToDropbox(captcha: string): Promise<ActionState> {
     const dropboxApiArg = {
       path: `/captcha/${newFileName}`,
       mode: 'add',
-      autorename: true,
+      autorename: false,
       mute: false,
     };
 
