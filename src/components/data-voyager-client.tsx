@@ -104,7 +104,7 @@ export function DataVoyagerClient() {
   useEffect(() => {
     if (isAutoFetching) {
       runAutoFetch(); // Run once immediately
-      intervalRef.current = setInterval(runAutoFetch, 1000);
+      intervalRef.current = setInterval(runAutoFetch, 0);
     } else {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
