@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useState, useEffect, useRef } from 'react';
+import { useActionState, useState, useEffect } from 'react';
 import { fetchAndExtract, type ActionState } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,6 @@ import {
   Loader2,
   Search,
   Copy,
-  Link as LinkIcon,
   FileText,
   FileCode,
   Braces,
@@ -58,7 +57,7 @@ export function DataVoyagerClient() {
       }
       toast({
         title: 'Success',
-        description: 'Data fetched and URLs extracted.',
+        description: 'Data fetched.',
       });
     }
   }, [state, toast]);
@@ -94,7 +93,7 @@ export function DataVoyagerClient() {
                 DataVoyager
               </CardTitle>
               <CardDescription>
-                Paste a URL to fetch its content and extract links.
+                Paste a URL to fetch its content.
               </CardDescription>
             </div>
           </div>
@@ -127,115 +126,60 @@ export function DataVoyagerClient() {
       </Card>
 
       {(isPending || state.data) && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <div>
-                  <CardTitle>Fetched Content</CardTitle>
-                  <CardDescription>
-                    The data from the provided URL.
-                  </CardDescription>
-                </div>
-                {state.data && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleCopy(content, 'Content')}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                )}
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle>Fetched Content</CardTitle>
+                <CardDescription>
+                  The data from the provided URL.
+                </CardDescription>
               </div>
-            </CardHeader>
-            <CardContent>
-              {isPending && !state.data ? (
-                <div className="h-[500px] flex items-center justify-center">
-                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
-              ) : (
-                <Tabs value={displayFormat} onValueChange={setDisplayFormat}>
-                  <TabsList>
-                    <TabsTrigger value="html">
-                      <FileCode className="mr-2" />
-                      HTML
-                    </TabsTrigger>
-                    <TabsTrigger value="json">
-                      <Braces className="mr-2" />
-                      JSON
-                    </TabsTrigger>
-                    <TabsTrigger value="text">
-                      <FileText className="mr-2" />
-                      Text
-                    </TabsTrigger>
-                  </TabsList>
-                  <div className="mt-4 rounded-md border bg-muted/50">
-                    <ScrollArea className="h-[500px] w-full">
-                      <pre className="p-4 text-sm whitespace-pre-wrap break-all">
-                        <code className={`language-${displayFormat}`}>
-                          {content}
-                        </code>
-                      </pre>
-                    </ScrollArea>
-                  </div>
-                </Tabs>
+              {state.data && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleCopy(content, 'Content')}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
               )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Extracted URLs</CardTitle>
-              <CardDescription>
-                AI-identified links from the content.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-                {isPending && !state.data ? (
-                     <div className="h-[560px] flex items-center justify-center">
-                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                     </div>
-                ) : (
-                    <ScrollArea className="h-[560px] w-full rounded-md border p-2">
-                    {state.data?.extractedUrls.length ?? 0 > 0 ? (
-                        <ul className="space-y-1">
-                        {state.data?.extractedUrls.map((url, index) => (
-                            <li
-                            key={index}
-                            className="flex items-center justify-between gap-2 p-2 rounded-md hover:bg-muted"
-                            >
-                            <div className="flex items-center gap-2 min-w-0">
-                                <LinkIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                <a
-                                href={url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="truncate text-sm text-primary hover:underline"
-                                >
-                                {url}
-                                </a>
-                            </div>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="flex-shrink-0"
-                                onClick={() => handleCopy(url, 'URL')}
-                            >
-                                <Copy className="h-4 w-4" />
-                            </Button>
-                            </li>
-                        ))}
-                        </ul>
-                    ) : (
-                        <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-                        No URLs found.
-                        </div>
-                    )}
-                    </ScrollArea>
-                )}
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {isPending && !state.data ? (
+              <div className="h-[500px] flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <Tabs value={displayFormat} onValueChange={setDisplayFormat}>
+                <TabsList>
+                  <TabsTrigger value="html">
+                    <FileCode className="mr-2" />
+                    HTML
+                  </TabsTrigger>
+                  <TabsTrigger value="json">
+                    <Braces className="mr-2" />
+                    JSON
+                  </TabsTrigger>
+                  <TabsTrigger value="text">
+                    <FileText className="mr-2" />
+                    Text
+                  </TabsTrigger>
+                </TabsList>
+                <div className="mt-4 rounded-md border bg-muted/50">
+                  <ScrollArea className="h-[500px] w-full">
+                    <pre className="p-4 text-sm whitespace-pre-wrap break-all">
+                      <code className={`language-${displayFormat}`}>
+                        {content}
+                      </code>
+                    </pre>
+                  </ScrollArea>
+                </div>
+              </Tabs>
+            )}
+          </CardContent>
+        </Card>
       )}
     </div>
   );

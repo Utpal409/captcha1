@@ -1,6 +1,5 @@
 'use server';
 
-import { extractUrlsFromFetchedData } from '@/ai/flows/extract-urls-from-fetched-data';
 import { z } from 'zod';
 
 const formSchema = z.object({
@@ -10,7 +9,6 @@ const formSchema = z.object({
 export interface ActionState {
   data?: {
     content: string;
-    extractedUrls: string[];
     format: string;
   };
   error?: string;
@@ -62,12 +60,9 @@ export async function fetchAndExtract(
       format = 'html';
     }
 
-    const aiResult = await extractUrlsFromFetchedData({ fetchedData: content });
-
     return {
       data: {
         content,
-        extractedUrls: aiResult.urls || [],
         format,
       },
     };
