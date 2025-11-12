@@ -69,36 +69,7 @@ export async function sendToDropbox(captcha: string): Promise<ActionState> {
   }
 
   try {
-    const listFolderResponse = await fetch('https://api.dropboxapi.com/2/files/list_folder', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ path: '/captcha', recursive: false }),
-    });
-
-    let nextFileNumber = 1;
-    // A 409 error on list_folder means the folder doesn't exist, which is fine.
-    // We'll just start numbering at 1. Any other error is a problem.
-    if (!listFolderResponse.ok && listFolderResponse.status !== 409) {
-        const errorBody = await listFolderResponse.text();
-        console.error('Dropbox API Error (list_folder):', errorBody);
-        return { error: `Failed to list files in Dropbox: ${listFolderResponse.status} ${listFolderResponse.statusText}. Response: ${errorBody}` };
-    }
-    
-    if (listFolderResponse.ok) {
-        const listData = await listFolderResponse.json();
-        const existingNumbers = listData.entries
-            .map((entry: { name: string }) => parseInt(entry.name.replace('.jpg', ''), 10))
-            .filter((n: number) => !isNaN(n));
-        
-        if (existingNumbers.length > 0) {
-            nextFileNumber = Math.max(...existingNumbers) + 1;
-        }
-    }
-
-    const newFileName = `${nextFileNumber}.jpg`;
+    const newFileName = `${Date.now()}.jpg`;
     const base64Data = captcha.replace(/^data:image\/jpeg;base64,/, "");
 
     const dropboxApiArg = {
