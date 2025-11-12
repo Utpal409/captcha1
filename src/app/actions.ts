@@ -1,10 +1,6 @@
 'use server';
 
-import { z } from 'zod';
-
-const formSchema = z.object({
-  url: z.string().url({ message: 'Please enter a valid URL.' }),
-});
+const URL_TO_FETCH = 'https://gateway-voters.eci.gov.in/api/v1/captcha-service/generateCaptcha/EROLL';
 
 export interface ActionState {
   data?: {
@@ -18,22 +14,9 @@ export async function fetchAndExtract(
   prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const validatedFields = formSchema.safeParse({
-    url: formData.get('url'),
-  });
-
-  if (!validatedFields.success) {
-    return {
-      error:
-        validatedFields.error.flatten().fieldErrors.url?.join(', ') ||
-        'Invalid URL provided.',
-    };
-  }
-
-  const url = validatedFields.data.url;
 
   try {
-    const response = await fetch(url, {
+    const response = await fetch(URL_TO_FETCH, {
       headers: {
         'User-Agent':
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',

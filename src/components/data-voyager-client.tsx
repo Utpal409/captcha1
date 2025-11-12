@@ -3,7 +3,6 @@
 import { useActionState, useState, useEffect } from 'react';
 import { fetchAndExtract, type ActionState } from '@/app/actions';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Card,
   CardContent,
@@ -93,21 +92,13 @@ export function DataVoyagerClient() {
                 DataVoyager
               </CardTitle>
               <CardDescription>
-                Paste a URL to fetch its content.
+                Click the button to fetch content from the permanent URL.
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <form action={formAction} className="flex gap-2">
-            <Input
-              name="url"
-              type="url"
-              placeholder="https://example.com"
-              required
-              className="text-base"
-              disabled={isPending}
-            />
+          <form action={formAction}>
             <Button type="submit" disabled={isPending} className="min-w-[120px]">
               {isPending ? (
                 <>
