@@ -4,13 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack -p 9002",
-    "build": "next build",
-    "cf-build": "open-next build",
+    "build": "next build && npm run build:cf",
+    "build:cf": "open-next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "postinstall": "patch-package",
-    "deploy": "npm run build && npm run cf-build && wrangler deploy"
+    "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
     "@hookform/resolvers": "^4.1.3",
