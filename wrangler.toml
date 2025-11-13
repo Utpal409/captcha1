@@ -2,9 +2,8 @@ name = "my-nextjs-app"
 compatibility_date = "2024-07-25"
 main = ".open-next/worker.js"
 
-[[path]]
-path = ".open-next/assets"
-type = "assets"
+[site]
+bucket = ".open-next/assets"
 
 [placement]
 mode = "smart"
