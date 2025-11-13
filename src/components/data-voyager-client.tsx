@@ -41,7 +41,7 @@ export function DataVoyagerClient() {
   const [fetchSpeed, setFetchSpeed] = useState(0);
   const fetchCountRef = useRef(0);
   const speedCalcIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
+  const autoFetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
 
   const { toast } = useToast();
@@ -121,8 +121,8 @@ export function DataVoyagerClient() {
       }
       
       // Keep fetching if auto-fetch is still on
-      if (animationFrameRef.current !== null) {
-          animationFrameRef.current = requestAnimationFrame(runAutoFetch);
+      if (isAutoFetching) {
+          autoFetchTimeoutRef.current = setTimeout(runAutoFetch, 0);
       }
   };
 
@@ -132,8 +132,8 @@ export function DataVoyagerClient() {
     fetchCountRef.current = 0;
     setFetchSpeed(0);
 
-    // Start the animation frame loop
-    animationFrameRef.current = requestAnimationFrame(runAutoFetch);
+    // Start the fetch loop
+    runAutoFetch();
 
     speedCalcIntervalRef.current = setInterval(() => {
         setFetchSpeed(fetchCountRef.current * 6); // Calculate fetches per minute (10s interval * 6)
@@ -141,14 +141,39 @@ export function DataVoyagerClient() {
     }, 10000);
   };
 
+  useEffect(() => {
+    // This effect handles the case where isAutoFetching becomes true
+    // and ensures the loop starts. It also handles cleanup.
+    if (isAutoFetching) {
+      // Clear any existing timeout before starting a new one
+      if (autoFetchTimeoutRef.current) {
+        clearTimeout(autoFetchTimeoutRef.current);
+      }
+      runAutoFetch();
+    } else {
+      // If auto-fetching is stopped, clear the timeout.
+      if (autoFetchTimeoutRef.current) {
+        clearTimeout(autoFetchTimeoutRef.current);
+        autoFetchTimeoutRef.current = null;
+      }
+    }
+    // Cleanup function for when the component unmounts
+    return () => {
+      if (autoFetchTimeoutRef.current) {
+        clearTimeout(autoFetchTimeoutRef.current);
+      }
+    };
+  }, [isAutoFetching]);
+
+
   const stopAutoFetch = () => {
     setAutoFetchLogs(prev => [`[${new Date().toLocaleTimeString()}] Stopping auto-fetch...`, ...prev]);
     setIsAutoFetching(false);
     
-    // Stop the animation frame loop
-    if (animationFrameRef.current !== null) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
+    // Stop the timeout loop
+    if (autoFetchTimeoutRef.current) {
+      clearTimeout(autoFetchTimeoutRef.current);
+      autoFetchTimeoutRef.current = null;
     }
     
     if(speedCalcIntervalRef.current) {
