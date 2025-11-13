@@ -9,8 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "postinstall": "patch-package",
-    "deploy": "npm run build && npm run build:cf && wrangler deploy"
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@hookform/resolvers": "^4.1.3",
