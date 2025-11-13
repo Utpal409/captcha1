@@ -5,3 +5,6 @@ main = ".open-next/worker.js"
 [[path]]
 path = ".open-next/assets"
 type = "assets"
+
+[placement]
+mode = "smart"
