@@ -73,26 +73,16 @@ async function getTargetFolder(accessToken: string): Promise<string> {
 
         if (!listFoldersResponse.ok) {
              const errorBody = await listFoldersResponse.text();
-             // If folder listing fails because the root is not found, it's okay to proceed
-             if (errorBody.includes('path/not_found')) {
-                 // The root '' path may not be listable for some token types, but subfolders are.
-                 // We'll try to create/use '/captcha' directly.
+             if (errorBody.includes('path/not_found') || errorBody.includes('path/malformed_path')) {
+                // This can happen with restricted app tokens. We'll proceed by trying to create the base folder.
              } else {
                 console.error('Dropbox API Error (list_folder for root):', errorBody);
+                // Even with other errors, we can try to proceed assuming the folder might be creatable.
              }
-             // Attempt to create the base folder anyway. If it exists, Dropbox will handle it.
-             await fetch('https://api.dropboxapi.com/2/files/create_folder_v2', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ path: '/captcha', autorename: false }),
-            });
-             return '/captcha';
         }
 
-        const folderData = await listFoldersResponse.json();
+        const folderData = listFoldersResponse.ok ? await listFoldersResponse.json() : { entries: [] };
+        
         const captchaFolders = folderData.entries
             .filter((entry: any) => entry['.tag'] === 'folder' && /^(?:\d+-)?captcha$/.test(entry.name))
             .map((entry: any) => ({name: entry.name, num: entry.name === 'captcha' ? 0 : parseInt(entry.name.split('-')[0])}))
@@ -110,7 +100,7 @@ async function getTargetFolder(accessToken: string): Promise<string> {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ path: targetFolder, autorename: false }),
-            });
+            }).catch(e => console.warn(`Could not create base folder ${targetFolder}, it may already exist.`));
             return targetFolder;
         }
 
@@ -126,7 +116,6 @@ async function getTargetFolder(accessToken: string): Promise<string> {
         
         if (!listFilesInFolderResponse.ok) {
             const listError = await listFilesInFolderResponse.json();
-            // If the folder doesn't exist, create it.
             if (listError?.error?.path?.['.tag'] === 'not_found') {
                  await fetch('https://api.dropboxapi.com/2/files/create_folder_v2', {
                     method: 'POST',
@@ -135,21 +124,26 @@ async function getTargetFolder(accessToken: string): Promise<string> {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({ path: targetFolder, autorename: false }),
-                });
+                }).catch(e => console.warn(`Could not create folder ${targetFolder} during file count, it may already exist.`));
                 return targetFolder;
             }
-            return targetFolder; // Proceed with current folder if count check fails
+            console.error(`Failed to list files in ${targetFolder}. Proceeding anyway.`);
+            return targetFolder; 
         }
         
         const filesData = await listFilesInFolderResponse.json();
         const fileCount = filesData.entries.filter((e: any) => e['.tag'] === 'file').length;
 
         if (fileCount >= FOLDER_FILE_LIMIT) {
-            const lastFolder = captchaFolders[captchaFolders.length - 1];
+            const lastFolder = captchaFolders.length > 0 ? captchaFolders[captchaFolders.length - 1] : { num: -1 };
             const nextNum = lastFolder.num + 1;
-            const newFolderName = `/${nextNum}-captcha`;
+            const newFolderName = `/${nextNum === 0 ? 'captcha' : `${nextNum}-captcha`}`;
+            
+            // If the base folder name is the one to be created, and it already exists from the initial check, we don't need to create it again.
+            if (newFolderName === '/captcha' && captchaFolders.some(f => f.name === 'captcha')) {
+                return newFolderName;
+            }
 
-            // Create new folder
             const createFolderResponse = await fetch('https://api.dropboxapi.com/2/files/create_folder_v2', {
                  method: 'POST',
                 headers: {
@@ -161,9 +155,11 @@ async function getTargetFolder(accessToken: string): Promise<string> {
             if (createFolderResponse.ok) {
                 return newFolderName;
             } else {
-                // If folder creation fails (e.g. race condition), it might already exist.
                 const errorBody = await createFolderResponse.text();
-                console.warn(`Could not create folder ${newFolderName}, may already exist. Error: ${errorBody}`);
+                if (errorBody.includes('path/conflict/folder')) {
+                    return newFolderName;
+                }
+                console.warn(`Could not create folder ${newFolderName}. Error: ${errorBody}. Attempting to use it anyway.`);
                 return newFolderName;
             }
         }
@@ -171,8 +167,8 @@ async function getTargetFolder(accessToken: string): Promise<string> {
         return targetFolder;
 
     } catch (e) {
-        console.error("Error in getTargetFolder:", e);
-        return '/captcha'; // fallback
+        console.error("A critical error occurred in getTargetFolder:", e);
+        return '/captcha'; // fallback to a default folder on critical failure
     }
 }
 
@@ -240,7 +236,7 @@ async function runSingleFetchAndSend(targetFolder: string): Promise<ActionState>
     return { logMessage: `[${new Date().toLocaleTimeString()}] Fetch failed: ${fetchResult.error || 'No captcha data'}` };
   }
   
-  const captchaWithPrefix = `data:image/jpeg;base64,${fetchResult.data.captcha}`;
+  const captchaWithPrefix = `data:image\/jpeg;base64,${fetchResult.data.captcha}`;
   
   const sendResult = await sendToDropbox(captchaWithPrefix, targetFolder);
 
